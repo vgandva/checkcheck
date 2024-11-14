@@ -1,45 +1,73 @@
 let vrSession = null;
 let viewer; // Marzipano viewer instance from index.js
+let xrLayer = null;
 const reticle = document.getElementById("reticle");
 
+// Initialize Marzipano viewer and load a 360 image (modify according to your setup)
+function initMarzipano() {
+    const viewerElement = document.getElementById('viewer');
+    const panoImage = "path/to/360image.jpg";  // Path to your 360 image
+
+    const viewerConfig = {
+        stage: { 
+            useWebGL: true
+        }
+    };
+    
+    viewer = new Marzipano.Viewer(viewerElement, viewerConfig);
+    const source = Marzipano.ImageUrlSource.fromString(panoImage);
+    const geometry = new Marzipano.EquirectGeometry([{ width: 4000 }]);
+    const view = new Marzipano.RectilinearView();
+    const scene = viewer.createScene({ source, geometry, view });
+
+    scene.switchTo();
+}
+
+// Enter VR mode
 function enterVRMode() {
     if (navigator.xr) {
         navigator.xr.requestSession("immersive-vr").then((session) => {
             vrSession = session;
             session.addEventListener("end", exitVRMode);
-            document.getElementById("vrButton").style.display = "none";
-            reticle.style.display = "block";
+
+            const glContext = viewer.renderer().context; // WebGL context from Marzipano
+            xrLayer = new XRWebGLLayer(vrSession, glContext);
+            vrSession.updateRenderState({ baseLayer: xrLayer });
+
+            document.getElementById("vrButton").style.display = "none"; // Hide VR button
+            reticle.style.display = "block"; // Show reticle
+
             startVRRendering();
-            startGazeInteraction();
         });
     } else {
         alert("WebXR not supported on this device.");
     }
 }
 
+// Exit VR mode
 function exitVRMode() {
     vrSession.end();
     vrSession = null;
-    document.getElementById("vrButton").style.display = "block";
-    reticle.style.display = "none";
+    document.getElementById("vrButton").style.display = "block"; // Show VR button again
+    reticle.style.display = "none"; // Hide reticle
 }
 
+// Start VR rendering
 function startVRRendering() {
-    const xrLayer = new XRWebGLLayer(vrSession, viewer.renderer().context);
-    vrSession.updateRenderState({ baseLayer: xrLayer });
     vrSession.requestAnimationFrame(onXRFrame);
 }
 
+// Handle XR frame rendering
 function onXRFrame(time, frame) {
     const session = frame.session;
     const pose = frame.getViewerPose(session.renderState.baseLayer);
-
-    viewer.renderer().context.clear();
     if (pose) {
+        viewer.renderer().context.clear();
         for (const view of pose.views) {
             const viewport = session.renderState.baseLayer.getViewport(view);
             viewer.renderer().context.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-
+            
+            // Update Marzipano view based on XR pose
             viewer.stage().setPose(view.transform.orientation, view.transform.position);
             viewer.render();
         }
@@ -48,6 +76,7 @@ function onXRFrame(time, frame) {
     session.requestAnimationFrame(onXRFrame);
 }
 
+// Handle gaze interaction for hotspot selection (this is an advanced feature)
 function startGazeInteraction() {
     function animate() {
         checkGazeIntersection();
@@ -64,11 +93,8 @@ function checkGazeIntersection() {
 }
 
 function detectHotspotUnderReticle() {
-    // Assuming you have hotspots defined in Marzipano
     const hotspots = viewer.hotspotContainer().listHotspots();
-
-    // Simple gaze-based detection by checking if reticle is near a hotspot's position
-    const reticlePosition = getReticlePositionInScene(); // Use a method to transform reticle to Marzipano scene coordinates
+    const reticlePosition = getReticlePositionInScene(); // Convert reticle position to Marzipano's coordinate system
 
     for (const hotspot of hotspots) {
         if (isNear(reticlePosition, hotspot.position)) {
@@ -92,3 +118,6 @@ function activateHotspot(hotspot) {
     console.log("Hotspot triggered:", hotspot.id);
     // Trigger teleport or hotspot interaction logic
 }
+
+// Initialize Marzipano viewer when the page loads
+window.onload = initMarzipano;

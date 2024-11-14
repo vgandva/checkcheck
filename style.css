@@ -828,7 +828,7 @@ body.view-control-buttons .viewControlButton {
 
 /* Reticle */
 #reticle {
-    display: none; /* Initially hidden until VR mode is activated */
+    display: none; /* Hidden until VR mode is activated */
     position: fixed;
     top: 50%;
     left: 50%;

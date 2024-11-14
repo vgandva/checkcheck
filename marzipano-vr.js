@@ -1,25 +1,66 @@
-// Variables for VR mode and gaze interaction
-let gazeDuration = 2000; // Duration in ms to trigger hotspot
-let gazeTimer;
+let vrSession = null;
+let viewer; // Assume this is your Marzipano viewer instance from index.js
 
-// Function to start VR mode
-function enterVRMode() {
-    // Check for WebXR or WebVR support to enter immersive VR mode
+// Function to initialize VR mode
+async function enterVRMode() {
     if (navigator.xr) {
-        navigator.xr.requestSession('immersive-vr').then((session) => {
-            document.body.appendChild(session);
-            startGazeInteraction();
-        }).catch(err => {
-            console.log("Failed to enter VR mode:", err);
-        });
+        try {
+            // Request immersive VR session
+            vrSession = await navigator.xr.requestSession('immersive-vr');
+            vrSession.addEventListener('end', exitVRMode);
+            document.getElementById("vrButton").style.display = "none"; // Hide VR button
+            document.getElementById("reticle").style.display = "block"; // Show reticle
+            startVRRendering();
+        } catch (err) {
+            console.error("VR mode request failed:", err);
+        }
     } else {
-        console.log("WebXR not supported on this device.");
+        alert("WebXR not supported on this device.");
     }
-    document.getElementById("vrButton").style.display = "none"; // Hide VR button
-    document.getElementById("reticle").style.display = "block"; // Show reticle
 }
 
-// Function to start gaze-based interaction loop
+// Function to start rendering in VR
+function startVRRendering() {
+    const xrLayer = new XRWebGLLayer(vrSession, viewer.renderer().context);
+
+    vrSession.updateRenderState({ baseLayer: xrLayer });
+    vrSession.requestAnimationFrame(onXRFrame);
+}
+
+// Frame loop for rendering in VR
+function onXRFrame(time, frame) {
+    const session = frame.session;
+    const pose = frame.getViewerPose(session.renderState.baseLayer);
+
+    // Clear any previous rendering and apply new rendering based on pose
+    viewer.renderer().context.clear();
+
+    if (pose) {
+        for (const view of pose.views) {
+            const viewport = session.renderState.baseLayer.getViewport(view);
+            viewer.renderer().context.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+
+            // Adjust viewer orientation and position based on XR pose data
+            viewer.stage().setPose(view.transform.orientation, view.transform.position);
+            viewer.render();
+        }
+    }
+
+    session.requestAnimationFrame(onXRFrame); // Loop rendering in VR mode
+}
+
+// Function to exit VR mode
+function exitVRMode() {
+    vrSession.end();
+    vrSession = null;
+    document.getElementById("vrButton").style.display = "block"; // Show VR button
+    document.getElementById("reticle").style.display = "none"; // Hide reticle
+}
+
+// Add event listener for exiting VR if VR button or hardware action is taken
+window.addEventListener('vrdisplaydeactivate', exitVRMode);
+
+// Gaze-based interaction setup (same as before)
 function startGazeInteraction() {
     function animate() {
         checkGazeIntersection();
@@ -28,7 +69,6 @@ function startGazeInteraction() {
     animate();
 }
 
-// Function to detect if the reticle is aligned with a hotspot
 function checkGazeIntersection() {
     const intersectedHotspot = detectHotspotUnderReticle();
     if (intersectedHotspot) {
@@ -38,28 +78,23 @@ function checkGazeIntersection() {
     }
 }
 
-// Start timer when gaze stays on hotspot
 function startGazeTimer(hotspot) {
     gazeTimer = setTimeout(() => {
         activateHotspot(hotspot);
     }, gazeDuration);
 }
 
-// Clear gaze timer when gaze moves away
 function clearGazeTimer() {
     clearTimeout(gazeTimer);
 }
 
-// Function to activate the hotspot (teleport or action)
 function activateHotspot(hotspot) {
     console.log(`Activated hotspot: ${hotspot.id}`);
-    // Example action: teleport to a target scene
-    // viewer.loadScene(hotspot.targetSceneId);
+    // Trigger teleport or hotspot action
 }
 
-// Placeholder function to detect hotspot under reticle
+// Placeholder for detecting hotspot
 function detectHotspotUnderReticle() {
-    // Logic to detect hotspot aligned with reticle goes here
-    // Replace this with appropriate logic for your Marzipano setup
+    // Implement actual hotspot detection logic here
     return null;
 }

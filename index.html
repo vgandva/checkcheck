@@ -7,6 +7,7 @@
 <style> @-ms-viewport { width: device-width; } </style>
 <link rel="stylesheet" href="vendor/reset.min.css">
 <link rel="stylesheet" href="style.css">
+  
 </head>
 <body class="multiple-scenes ">
 
@@ -71,10 +72,21 @@
 <a href="javascript:void(0)" id="viewOut" class="viewControlButton viewControlButton-6">
   <img class="icon" src="img/minus.png">
 </a>
+   <!-- VR Button -->
+    <button id="vrButton" onclick="enterVRMode()">
+        <img src="path/to/vr-icon.png" alt="Enter VR" />
+    </button>
 
+    <!-- Reticle -->
+    <div id="reticle"></div>
+
+    <!-- Other HTML and Marzipano viewer setup code -->
+
+    <!-- JavaScript Files -->
 <script src="vendor/screenfull.min.js" ></script>
 <script src="vendor/bowser.min.js" ></script>
 <script src="vendor/marzipano.js" ></script>
+<script src="marzipano-vr.js"></script> <!-- VR-specific functionality and reticle logic -->
 
 <script src="data.js"></script>
 <script src="index.js"></script>
